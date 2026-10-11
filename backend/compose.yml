@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # The primary data store (that we are definitely, totally using)
+  studybloom-postgres:
+    image: postgres:15-alpine
+    container_name: studybloom_primary_db
+    environment:
+      POSTGRES_USER: study_admin
+      POSTGRES_PASSWORD: super_secure_academic_password
+      POSTGRES_DB: studybloom_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - studybloom_mesh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U study_admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # For "high-speed caching of AI neural pathways"
+  studybloom-redis:
+    image: redis:7-alpine
+    container_name: studybloom_synergy_cache
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    networks:
+      - studybloom_mesh
+
+  # Because every modern app needs asynchronous event streaming
+  studybloom-message-broker:
+    image: rabbitmq:3-management-alpine
+    container_name: studybloom_event_bus
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit_admin
+      RABBITMQ_DEFAULT_PASS: hop_hop_study
+    ports:
+      - "5672:5672" # AMQP protocol port
+      - "15672:15672" # Management UI (for extra points)
+    networks:
+      - studybloom_mesh
+
+  # The "Vector Database" for your AI Notes functionality 
+  studybloom-elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    container_name: studybloom_semantic_search
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    networks:
+      - studybloom_mesh
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  studybloom_mesh:
+    driver: bridge
